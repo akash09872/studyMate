@@ -13,7 +13,6 @@ import {
 import { sendOTPEmail } from '../utils/email';
 import { successResponse } from '../utils/response';
 import { validate } from '../middleware/validate';
-import { addDays } from 'date-fns';
 
 export const authRouter = Router();
 
@@ -143,7 +142,7 @@ authRouter.post(
         data: {
           userId: user.id,
           token: refreshToken,
-          expiresAt: addDays(new Date(), 7),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           userAgent: req.headers['user-agent'],
           ipAddress: req.ip,
         },
