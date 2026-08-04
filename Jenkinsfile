@@ -131,22 +131,6 @@ pipeline {
     }
 
     post {
-
-        failure {
-
-            script {
-
-                if (env.FRONTEND_CHANGED == "true") {
-                    sh "kubectl rollout undo deployment/frontend"
-                }
-
-                if (env.BACKEND_CHANGED == "true") {
-                    sh "kubectl rollout undo deployment/backend"
-                }
-
-            }
-        }
-
         success {
             echo "Pipeline completed successfully."
         }
