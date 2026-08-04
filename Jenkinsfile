@@ -87,14 +87,13 @@ pipeline {
                 '''
             }
         }
-
-        post {
-            failure {
-                sh '''
-                kubectl rollout undo deployment/frontend
-                kubectl rollout undo deployment/backend
-                '''
-            }
+    }
+    post {
+        failure {
+            sh '''
+            kubectl rollout undo deployment/frontend
+            kubectl rollout undo deployment/backend
+            '''
         }
     }
 }
