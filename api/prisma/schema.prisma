@@ -1,0 +1,706 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+
+enum ResourceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+  DRAFT
+}
+
+enum ResourceType {
+  NOTES
+  ASSIGNMENT
+  PYQ
+  LAB_MANUAL
+  PRACTICAL_FILE
+  MINI_PROJECT
+  MAJOR_PROJECT
+  BOOK
+  PPT
+  CHEAT_SHEET
+  SYLLABUS
+  REFERENCE
+  OTHER
+}
+
+enum NotificationType {
+  RESOURCE_APPROVED
+  RESOURCE_REJECTED
+  RESOURCE_CHANGES_REQUESTED
+  ASSIGNMENT_CREATED
+  DEADLINE_APPROACHING
+  BADGE_EARNED
+  FACULTY_COMMENT
+  DOWNLOAD_MILESTONE
+  LEADERBOARD_UPDATE
+  SYSTEM_ANNOUNCEMENT
+  NEW_COMMENT
+  REPORT_RESOLVED
+}
+
+enum ReportReason {
+  WRONG_CONTENT
+  DUPLICATE
+  SPAM
+  INAPPROPRIATE
+  BROKEN_FILE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum BadgeRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum PointEventType {
+  UPLOAD_APPROVED
+  RATING_RECEIVED
+  DOWNLOAD_MILESTONE
+  HELPFUL_COMMENT
+  FACULTY_PICK
+  DAILY_LOGIN
+  WEEKLY_CHALLENGE
+  MONTHLY_CHALLENGE
+  TOP_CONTRIBUTOR
+  BADGE_BONUS
+  PENALTY
+}
+
+// ─── Core Tables ──────────────────────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  passwordHash      String
+  role              Role      @default(STUDENT)
+  firstName         String
+  lastName          String
+  collegeId         String    @unique
+  avatarUrl         String?
+  bio               String?
+  phone             String?
+  emailVerified     Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  
+  // Academic info
+  branchId          String?
+  branch            Branch?   @relation(fields: [branchId], references: [id])
+  currentSemester   Int?      @default(1)
+  enrollmentNo      String?   @unique
+  
+  // Gamification
+  totalPoints       Int       @default(0)
+  level             Int       @default(1)
+  contributionScore Int       @default(0)
+  reputationScore   Int       @default(0)
+  currentStreak     Int       @default(0)
+  longestStreak     Int       @default(0)
+  lastLoginAt       DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  resources             Resource[]            @relation("UploaderResources")
+  reviewedResources     Resource[]            @relation("ReviewerResources")
+  downloads             Download[]
+  bookmarks             Bookmark[]
+  bookmarkCollections   BookmarkCollection[]
+  ratings               Rating[]
+  comments              Comment[]
+  commentLikes          CommentLike[]
+  reports               Report[]
+  notifications         Notification[]
+  badges                UserBadge[]
+  achievements          UserAchievement[]
+  pointTransactions     PointTransaction[]
+  streaks               Streak[]
+  assignments           Assignment[]
+  submissions           AssignmentSubmission[]
+  otpCodes              OtpCode[]
+  refreshTokens         RefreshToken[]
+  auditLogs             AuditLog[]
+  userChallenges        UserChallenge[]
+  notifPreferences      NotificationPreference?
+  leaderboardEntries    LeaderboardEntry[]
+  
+  @@index([email])
+  @@index([collegeId])
+  @@index([branchId])
+  @@index([role])
+  @@map("users")
+}
+
+model Branch {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  shortName   String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  users       User[]
+  semesters   Semester[]
+  subjects    Subject[]
+  resources   Resource[]
+  assignments Assignment[]
+  
+  @@map("branches")
+}
+
+model Semester {
+  id          String    @id @default(uuid())
+  number      Int
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  subjects    Subject[]
+  resources   Resource[]
+  
+  @@unique([number, branchId])
+  @@map("semesters")
+}
+
+model Subject {
+  id          String    @id @default(uuid())
+  name        String
+  code        String    @unique
+  description String?
+  credits     Int?
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  semesterId  String
+  semester    Semester  @relation(fields: [semesterId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  resources   Resource[]
+  assignments Assignment[]
+  
+  @@index([branchId])
+  @@index([semesterId])
+  @@map("subjects")
+}
+
+// ─── Resource Tables ──────────────────────────────────────────────────────────
+
+model Resource {
+  id              String          @id @default(uuid())
+  title           String
+  slug            String          @unique
+  description     String
+  type            ResourceType
+  status          ResourceStatus  @default(PENDING)
+  
+  // File info
+  fileUrl         String
+  fileKey         String
+  fileName        String
+  fileSize        Int
+  fileType        String
+  thumbnailUrl    String?
+  
+  // Academic categorization
+  subjectId       String
+  subject         Subject         @relation(fields: [subjectId], references: [id])
+  branchId        String
+  branch          Branch          @relation(fields: [branchId], references: [id])
+  semesterId      String
+  semester        Semester        @relation(fields: [semesterId], references: [id])
+  unit            String?
+  author          String?
+  
+  // People
+  uploaderId      String
+  uploader        User            @relation("UploaderResources", fields: [uploaderId], references: [id])
+  reviewerId      String?
+  reviewer        User?           @relation("ReviewerResources", fields: [reviewerId], references: [id])
+  
+  // Review info
+  reviewNote      String?
+  reviewedAt      DateTime?
+  isFeatured      Boolean         @default(false)
+  isVerified      Boolean         @default(false)
+  facultyPick     Boolean         @default(false)
+  
+  // Stats
+  viewCount       Int             @default(0)
+  downloadCount   Int             @default(0)
+  bookmarkCount   Int             @default(0)
+  averageRating   Float           @default(0)
+  ratingCount     Int             @default(0)
+  
+  // Tags
+  tags            ResourceTag[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  downloads       Download[]
+  bookmarks       Bookmark[]
+  ratings         Rating[]
+  comments        Comment[]
+  reports         Report[]
+  versions        ResourceVersion[]
+  
+  @@index([status])
+  @@index([type])
+  @@index([branchId])
+  @@index([semesterId])
+  @@index([subjectId])
+  @@index([uploaderId])
+  @@index([createdAt])
+  @@index([averageRating])
+  @@index([downloadCount])
+  @@map("resources")
+}
+
+model ResourceTag {
+  id          String    @id @default(uuid())
+  name        String
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  
+  @@unique([name, resourceId])
+  @@index([name])
+  @@map("resource_tags")
+}
+
+model ResourceVersion {
+  id          String    @id @default(uuid())
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  version     Int
+  fileUrl     String
+  fileKey     String
+  fileSize    Int
+  changeNote  String?
+  createdAt   DateTime  @default(now())
+  
+  @@map("resource_versions")
+}
+
+model Download {
+  id          String    @id @default(uuid())
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  
+  @@index([resourceId])
+  @@index([userId])
+  @@map("downloads")
+}
+
+model BookmarkCollection {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  bookmarks   Bookmark[]
+  
+  @@unique([name, userId])
+  @@map("bookmark_collections")
+}
+
+model Bookmark {
+  id            String              @id @default(uuid())
+  resourceId    String
+  resource      Resource            @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionId  String?
+  collection    BookmarkCollection? @relation(fields: [collectionId], references: [id])
+  createdAt     DateTime            @default(now())
+  
+  @@unique([resourceId, userId])
+  @@index([userId])
+  @@map("bookmarks")
+}
+
+model Rating {
+  id          String    @id @default(uuid())
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int
+  review      String?
+  isVerified  Boolean   @default(false)
+  helpfulCount Int      @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([resourceId, userId])
+  @@index([resourceId])
+  @@map("ratings")
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  resourceId  String
+  resource    Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  content     String
+  likeCount   Int       @default(0)
+  isEdited    Boolean   @default(false)
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  likes       CommentLike[]
+  reports     Report[]
+  
+  @@index([resourceId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model CommentLike {
+  id          String    @id @default(uuid())
+  commentId   String
+  comment     Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([commentId, userId])
+  @@map("comment_likes")
+}
+
+model Report {
+  id          String        @id @default(uuid())
+  reporterId  String
+  reporter    User          @relation(fields: [reporterId], references: [id])
+  reason      ReportReason
+  description String?
+  status      ReportStatus  @default(PENDING)
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  resolution  String?
+  
+  // Polymorphic - one of these will be set
+  resourceId  String?
+  resource    Resource?     @relation(fields: [resourceId], references: [id])
+  commentId   String?
+  comment     Comment?      @relation(fields: [commentId], references: [id])
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@index([status])
+  @@map("reports")
+}
+
+// ─── Assignment Tables ────────────────────────────────────────────────────────
+
+model Assignment {
+  id              String    @id @default(uuid())
+  title           String
+  description     String
+  deadline        DateTime
+  marks           Int
+  subjectId       String
+  subject         Subject   @relation(fields: [subjectId], references: [id])
+  branchId        String
+  branch          Branch    @relation(fields: [branchId], references: [id])
+  facultyId       String
+  faculty         User      @relation(fields: [facultyId], references: [id])
+  attachmentUrls  String[]  @default([])
+  modelAnswerUrl  String?
+  isPublished     Boolean   @default(false)
+  showSubmissions Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  submissions     AssignmentSubmission[]
+  
+  @@index([subjectId])
+  @@index([facultyId])
+  @@index([deadline])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id            String    @id @default(uuid())
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User      @relation(fields: [studentId], references: [id])
+  fileUrl       String
+  fileKey       String
+  fileName      String
+  remarks       String?
+  marks         Float?
+  feedback      String?
+  isBest        Boolean   @default(false)
+  submittedAt   DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+// ─── Gamification Tables ──────────────────────────────────────────────────────
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String
+  iconUrl     String
+  rarity      BadgeRarity @default(COMMON)
+  criteria    Json
+  points      Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  userBadges  UserBadge[]
+  
+  @@map("badges")
+}
+
+model UserBadge {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId     String
+  badge       Badge     @relation(fields: [badgeId], references: [id])
+  earnedAt    DateTime  @default(now())
+  
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Achievement {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String
+  iconUrl     String
+  xpReward    Int       @default(0)
+  criteria    Json
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  userAchievements UserAchievement[]
+  
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  earnedAt      DateTime    @default(now())
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model PointTransaction {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType   PointEventType
+  points      Int
+  description String
+  resourceId  String?
+  createdAt   DateTime        @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("point_transactions")
+}
+
+model Streak {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime  @db.Date
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, date])
+  @@map("streaks")
+}
+
+model Challenge {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  type        String    // WEEKLY | MONTHLY
+  xpReward    Int
+  criteria    Json
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  userChallenges UserChallenge[]
+  
+  @@map("challenges")
+}
+
+model UserChallenge {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  
+  @@unique([userId, challengeId])
+  @@map("user_challenges")
+}
+
+model LeaderboardEntry {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period      String    // OVERALL | WEEKLY | MONTHLY
+  periodKey   String    // e.g. "2024-W01" or "2024-01"
+  rank        Int
+  score       Int
+  uploads     Int       @default(0)
+  downloads   Int       @default(0)
+  rating      Float     @default(0)
+  createdAt   DateTime  @default(now())
+  
+  @@unique([userId, period, periodKey])
+  @@index([period, periodKey, rank])
+  @@map("leaderboard_entries")
+}
+
+// ─── Notification Tables ──────────────────────────────────────────────────────
+
+model Notification {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  body        String
+  link        String?
+  isRead      Boolean           @default(false)
+  data        Json?
+  createdAt   DateTime          @default(now())
+  
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                    String  @id @default(uuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceApproved      Boolean @default(true)
+  resourceRejected      Boolean @default(true)
+  assignmentCreated     Boolean @default(true)
+  deadlineApproaching   Boolean @default(true)
+  badgeEarned           Boolean @default(true)
+  facultyComment        Boolean @default(true)
+  downloadMilestone     Boolean @default(true)
+  newComment            Boolean @default(true)
+  systemAnnouncement    Boolean @default(true)
+  emailNotifications    Boolean @default(true)
+  
+  @@map("notification_preferences")
+}
+
+// ─── Auth Tables ──────────────────────────────────────────────────────────────
+
+model OtpCode {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code        String
+  type        String    // EMAIL_VERIFY | PASSWORD_RESET
+  expiresAt   DateTime
+  isUsed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  
+  @@index([userId])
+  @@map("otp_codes")
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  expiresAt   DateTime
+  isRevoked   Boolean   @default(false)
+  userAgent   String?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String
+  entity      String
+  entityId    String?
+  oldData     Json?
+  newData     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

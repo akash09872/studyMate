@@ -1,0 +1,66 @@
+Here is a comprehensive technical overview of **StudyMate** that you can copy and use directly for your presentation. It covers the technology stack, the system architecture, and the core features we built.
+
+***
+
+### 1. Technology Stack
+
+**Frontend (Client-Side)**
+*   **Framework:** Next.js (App Router) with React 18
+*   **Language:** TypeScript for end-to-end type safety
+*   **Styling:** Tailwind CSS combined with Vanilla CSS variables for a custom dark-mode design system (Glassmorphism, Neon Lime-Green `#C8F135` accents).
+*   **State Management:** 
+    *   *Zustand* for global client state (e.g., Auth persistence).
+    *   *React Query (@tanstack/react-query)* for asynchronous server-state management, caching, and pagination.
+*   **Animations:** Framer Motion for fluid micro-interactions, page transitions, and dynamic UI elements.
+*   **Data Fetching:** Axios with automated JWT interceptors for silent token refreshes.
+*   **Data Visualization:** Recharts for rendering admin analytics and statistical graphs.
+
+**Backend (Server-Side)**
+*   **Runtime:** Node.js
+*   **Framework:** Express.js (RESTful API architecture)
+*   **Language:** TypeScript
+*   **Database & ORM:** PostgreSQL managed via Prisma ORM for type-safe database queries and schema migrations.
+*   **Authentication:** JSON Web Tokens (JWT) utilizing short-lived access tokens and secure HTTP-only refresh tokens. Passwords are hashed using `bcryptjs`.
+*   **Validation:** Zod for rigorous runtime request payload validation.
+*   **File Handling:** Multer middleware for intercepting and managing academic resource uploads.
+
+***
+
+### 2. Project Overview & Architecture
+
+**What is StudyMate?**
+StudyMate is a highly scalable, centralized academic collaboration platform designed to replace fragmented college WhatsApp groups and Google Drives. It allows students to easily discover semester-wise study materials (Notes, PYQs, Assignments) while incentivizing quality contributions through a built-in gamification engine.
+
+**System Architecture**
+The application follows a decoupled client-server architecture (Monorepo). The Next.js frontend acts as a highly interactive Single Page Application (SPA), communicating with the Express.js backend via secure REST API endpoints. The database layer uses PostgreSQL, ensuring ACID compliance for critical data like user XP, resource metadata, and faculty approval logs.
+
+***
+
+### 3. Core Modules & Features Developed
+
+**1. Secure Authentication & Role-Based Access Control (RBAC)**
+*   Implemented a robust authentication flow with Email verification, Password reset capabilities, and Session rotation.
+*   The system supports strict RBAC with three tiers: 
+    *   **Students:** Can consume resources, upload files, and earn XP.
+    *   **Faculty:** Have access to a dedicated Review Queue to approve, reject, or request changes on student uploads to maintain quality control.
+    *   **Admins:** Have access to a master dashboard to monitor platform health, manage academic branches, and revoke/grant user roles.
+
+**2. Intelligent Resource Library**
+*   Built a dynamic search and filtering engine allowing users to query resources by Branch, Semester, Subject, and File Type (e.g., Notes, Lab Manuals, PYQs).
+*   Integrated a detailed Resource Viewer featuring embedded PDF previews, metadata sidebars, and a nested comment/reply system for academic discussion.
+
+**3. Upload Wizard & Content Moderation**
+*   Designed a fluid, 4-step interactive Upload Wizard that captures files, extracts academic metadata, and allows users to add rich descriptions.
+*   Instead of immediate publishing, uploads are routed to a "Pending" state, entering the Faculty Moderation pipeline to ensure only verified, high-quality content reaches the global library.
+
+**4. Gamification Engine**
+*   To solve the "cold start" problem of content platforms, we engineered a gamification system.
+*   Students earn Experience Points (XP) for platform engagement (e.g., getting an upload approved, receiving 5-star ratings, or hitting download milestones).
+*   Developed a dynamic **Leaderboard** and **Profile Badge system** (tracking rarities from Common to Legendary) to foster healthy academic competition.
+
+**5. Administrative & Analytics Dashboards**
+*   Developed complex data visualization panels for Admins to track user growth, resource upload trends, and branch-wise engagement using area, pie, and bar charts.
+*   Built comprehensive data tables for Admins to manage system branches, semesters, and individual user accounts.
+
+### 4. UI/UX & Design Philosophy
+The platform was built to break away from traditional, boring academic portals. We utilized a premium, modern aesthetic prioritizing a dark theme with vibrant neon accents. By heavily leveraging Glassmorphism (frosted glass effects), skeleton loaders, and Framer Motion layout animations, the application feels fast, responsive, and incredibly premium—designed to easily scale and appeal to thousands of college students.
