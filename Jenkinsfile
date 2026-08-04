@@ -1,7 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKERHUB_USER = "akash0deep"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -11,89 +16,139 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
+
                     def changedFiles = sh(
-                        script: "git diff --name-only HEAD~1 HEAD",
+                        script: '''
+                            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+                                git diff --name-only HEAD~1 HEAD
+                            else
+                                git ls-files
+                            fi
+                        ''',
                         returnStdout: true
                     ).trim()
-    
+
                     echo "Changed Files:\n${changedFiles}"
-    
+
                     env.FRONTEND_CHANGED = changedFiles.contains("frontend/") ? "true" : "false"
-                    env.BACKEND_CHANGED = changedFiles.contains("backend/") ? "true" : "false"
+                    env.BACKEND_CHANGED  = changedFiles.contains("backend/") ? "true" : "false"
+
+                    echo "Frontend Changed: ${env.FRONTEND_CHANGED}"
+                    echo "Backend Changed : ${env.BACKEND_CHANGED}"
                 }
             }
         }
 
         stage('Build Frontend') {
             when {
-                expression {
-                    env.FRONTEND_CHANGED == "true"
-                }
+                expression { env.FRONTEND_CHANGED == "true" }
             }
+
             steps {
-                sh '''
+                sh """
                 docker build \
-                -t akash0deep/studymate-frontend:${BUILD_NUMBER} \
+                -t ${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER} \
                 ./frontend
-                '''
+                """
             }
         }
 
         stage('Build Backend') {
             when {
-                expression {
-                    env.BACKEND_CHANGED == "true"
-                }
+                expression { env.BACKEND_CHANGED == "true" }
             }
+
             steps {
-                sh '''
+                sh """
                 docker build \
-                -t akash0deep/studymate-backend:${BUILD_NUMBER} \
+                -t ${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER} \
                 ./backend
-                '''
+                """
             }
         }
 
-        stage('Push Images') {
-            steps {
+        stage('Push Frontend') {
+            when {
+                expression { env.FRONTEND_CHANGED == "true" }
+            }
 
-                sh '''
-                docker push akash0deep/studymate-frontend:${BUILD_NUMBER}
-                docker push akash0deep/studymate-backend:${BUILD_NUMBER}
-                '''
+            steps {
+                sh """
+                docker push ${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER}
+                """
+            }
+        }
+
+        stage('Push Backend') {
+            when {
+                expression { env.BACKEND_CHANGED == "true" }
+            }
+
+            steps {
+                sh """
+                docker push ${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER}
+                """
             }
         }
 
         stage('Deploy') {
             steps {
+                script {
 
-                sh '''
-                kubectl set image deployment/frontend \
-                frontend=akash0deep/studymate-frontend:${BUILD_NUMBER}
+                    if (env.FRONTEND_CHANGED == "true") {
+                        sh """
+                        kubectl set image deployment/frontend \
+                        frontend=${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER}
+                        """
+                    }
 
-                kubectl set image deployment/backend \
-                backend=akash0deep/studymate-backend:${BUILD_NUMBER}
-                '''
+                    if (env.BACKEND_CHANGED == "true") {
+                        sh """
+                        kubectl set image deployment/backend \
+                        backend=${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER}
+                        """
+                    }
+
+                }
             }
         }
 
-        stage('Verify') {
-
+        stage('Verify Rollout') {
             steps {
+                script {
 
-                sh '''
-                kubectl rollout status deployment/frontend
-                kubectl rollout status deployment/backend
-                '''
+                    if (env.FRONTEND_CHANGED == "true") {
+                        sh "kubectl rollout status deployment/frontend"
+                    }
+
+                    if (env.BACKEND_CHANGED == "true") {
+                        sh "kubectl rollout status deployment/backend"
+                    }
+
+                }
             }
         }
     }
+
     post {
+
         failure {
-            sh '''
-            kubectl rollout undo deployment/frontend
-            kubectl rollout undo deployment/backend
-            '''
+
+            script {
+
+                if (env.FRONTEND_CHANGED == "true") {
+                    sh "kubectl rollout undo deployment/frontend"
+                }
+
+                if (env.BACKEND_CHANGED == "true") {
+                    sh "kubectl rollout undo deployment/backend"
+                }
+
+            }
+        }
+
+        success {
+            echo "Pipeline completed successfully."
         }
     }
 }
