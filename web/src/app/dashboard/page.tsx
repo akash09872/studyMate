@@ -15,7 +15,7 @@ import { formatRelativeTime, formatNumber, getLevelName, RESOURCE_TYPE_LABELS, R
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
 const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7500];
-
+//hehe
 function XPBar({ points, level }: { points: number; level: number }) {
   const current = LEVEL_THRESHOLDS[level] || 0;
   const next = LEVEL_THRESHOLDS[level + 1] || current + 1000;
@@ -271,9 +271,9 @@ export default function DashboardPage() {
                     </div>
                   ))
                   : <div className="empty-state" style={{ padding: '20px 0' }}>
-                      <Bell size={24} style={{ opacity: 0.3 }} />
-                      <span style={{ fontSize: 12 }}>No new notifications</span>
-                    </div>
+                    <Bell size={24} style={{ opacity: 0.3 }} />
+                    <span style={{ fontSize: 12 }}>No new notifications</span>
+                  </div>
                 }
               </div>
             </div>
