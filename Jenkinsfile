@@ -7,6 +7,7 @@ pipeline {
                 checkout scm
             }
         }
+
         stage('Detect Changes') {
             steps {
                 script {
@@ -22,6 +23,7 @@ pipeline {
                 }
             }
         }
+
         stage('Build Frontend') {
             when {
                 expression {
@@ -36,6 +38,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Build Backend') {
             when {
                 expression {
@@ -50,6 +53,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Push Images') {
             steps {
 
@@ -59,6 +63,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Deploy') {
             steps {
 
@@ -71,6 +76,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Verify') {
 
             steps {
@@ -80,6 +86,15 @@ pipeline {
                 kubectl rollout status deployment/backend
                 '''
             }
-        }    
+        }
+
+        post {
+            failure {
+                sh '''
+                kubectl rollout undo deployment/frontend
+                kubectl rollout undo deployment/backend
+                '''
+            }
+        }
     }
 }

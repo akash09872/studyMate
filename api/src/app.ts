@@ -27,7 +27,7 @@ import { subjectRouter } from './routes/subject.routes';
 
 const app = express();
 
-// ─── Middleware ────────────────────────────────────────────────────────────────
+// ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
