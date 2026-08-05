@@ -30,8 +30,8 @@ pipeline {
 
                     echo "Changed Files:\n${changedFiles}"
 
-                    env.FRONTEND_CHANGED = changedFiles.contains("frontend/") ? "true" : "false"
-                    env.BACKEND_CHANGED  = changedFiles.contains("backend/") ? "true" : "false"
+                    env.FRONTEND_CHANGED = changedFiles.contains("web/") ? "true" : "false"
+                    env.BACKEND_CHANGED  = changedFiles.contains("api/") ? "true" : "false"
 
                     echo "Frontend Changed: ${env.FRONTEND_CHANGED}"
                     echo "Backend Changed : ${env.BACKEND_CHANGED}"
@@ -48,7 +48,7 @@ pipeline {
                 sh """
                 docker build \
                 -t akash0deep/studymate-frontend:${BUILD_NUMBER} \
-                ./frontend
+                ./web
                 """
             }
         }
@@ -62,7 +62,7 @@ pipeline {
                 sh """
                 docker build \
                 -t akash0deep/studymate-backend:${BUILD_NUMBER} \
-                ./backend
+                ./api
                 """
             }
         }
