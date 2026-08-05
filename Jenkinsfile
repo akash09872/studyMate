@@ -47,7 +47,7 @@ pipeline {
             steps {
                 sh """
                 docker build \
-                -t ${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER} \
+                -t akash0deep/studymate-frontend:${BUILD_NUMBER} \
                 ./frontend
                 """
             }
@@ -61,7 +61,7 @@ pipeline {
             steps {
                 sh """
                 docker build \
-                -t ${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER} \
+                -t akash0deep/studymate-backend:${BUILD_NUMBER} \
                 ./backend
                 """
             }
@@ -74,7 +74,7 @@ pipeline {
 
             steps {
                 sh """
-                docker push ${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER}
+                docker push akash0deep/studymate-frontend:${BUILD_NUMBER}
                 """
             }
         }
@@ -86,7 +86,7 @@ pipeline {
 
             steps {
                 sh """
-                docker push ${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER}
+                docker push akash0deep/studymate-backend:${BUILD_NUMBER}
                 """
             }
         }
@@ -98,14 +98,14 @@ pipeline {
                     if (env.FRONTEND_CHANGED == "true") {
                         sh """
                         kubectl set image deployment/frontend \
-                        frontend=${DOCKERHUB_USER}/studymate-frontend:${BUILD_NUMBER}
+                        frontend=akash0deep/studymate-frontend:${BUILD_NUMBER}
                         """
                     }
 
                     if (env.BACKEND_CHANGED == "true") {
                         sh """
                         kubectl set image deployment/backend \
-                        backend=${DOCKERHUB_USER}/studymate-backend:${BUILD_NUMBER}
+                        backend=akash0deep/studymate-backend:${BUILD_NUMBER}
                         """
                     }
 
@@ -131,6 +131,7 @@ pipeline {
     }
 
     post {
+
         success {
             echo "Pipeline completed successfully."
         }
